@@ -6,13 +6,14 @@
 #include <Wire.h>
 #include <WiFi.h>
 
-
+#include "display.h"
+#include "led_functions.h"
 /*    VARIBLES    */
 
 //NRF-24L01
 #define CE 12
 #define CSN 14
-#define SCK 26
+#define *        26
 #define MOSI 27
 #define MISO 25
 
@@ -161,6 +162,9 @@ void setup()
     sensor.longtitude = 0.0;
     sensor.battery = 0.0;
     sensor.speed = 0.0;
+
+    initDisplay();
+    clearScreen();
 }
 
 void loop()
@@ -169,7 +173,6 @@ void loop()
     if (currentTime - lastReceiveTime > 1000)
     {                // If current time is more then 1 second since we have recived the last data, that means we have lost connection
         resetData(); // If connection is lost, reset the data. It prevents unwanted behavior, for example if a drone jas a throttle up, if we lose connection it can keep flying away if we dont reset the function
-        setDiplay();
     }
 
     // Read all analog inputs and map them to one Byte value
@@ -199,38 +202,6 @@ void loop()
     }
 }
 
-void setOutput(int pins[])
-{
-    for (int i = 0; i < sizeof(pins); i++)
-    {
-        pinMode(pins[i], OUTPUT);
-    }
-}
-
-void setRgbColor(String color, int pins[])
-{
-    if (color == "red")
-    {
-        digitalWrite(pins[0], LOW);
-        digitalWrite(pins[1], HIGH);
-        digitalWrite(pins[2], HIGH);
-    }
-
-    if (color == "green")
-    {
-        digitalWrite(pins[0], HIGH);
-        digitalWrite(pins[1], LOW);
-        digitalWrite(pins[2], HIGH);
-    }
-
-    if (color == "off")
-    {
-        digitalWrite(pins[0], HIGH);
-        digitalWrite(pins[1], HIGH);
-        digitalWrite(pins[2], HIGH);
-    }
-}
-
 void getDevicesInfo(String message)
 {
     wifi_sta_list_t wifi_sta_list;
@@ -252,14 +223,30 @@ void getDevicesInfo(String message)
 
 void sendViaUDP(String ip, String Message)
 {
-    setRgbColor("green", LED_PHONE_CONNECTION_STATUS);
-    Serial.println(ip + " " + Message);
-    IPAddress ipSend('    ');
-    //IPAddress ipSend(192,168,4,1);
+  setRgbColor("green", LED_PHONE_CONNECTION_STATUS);
+  Serial.println(ip + " " + Message);
+  IPAddress ipSend(getValue(ip, '.', 0).toInt(), getValue(ip, '.', 1).toInt(), getValue(ip, '.', 2).toInt(), getValue(ip, '.', 3).toInt());
+  //IPAddress ipSend(192,168,4,1);
 
-    Udp.beginPacket(ipSend, localUdpPort);
-    Udp.print(Message);
-    Udp.endPacket();
+  Udp.beginPacket(ipSend, localUdpPort);
+  Udp.print(Message);
+  Udp.endPacket();
+}
+
+String getValue(String data, char separator, int index)
+{
+  int found = 0;
+  int strIndex[] = { 0, -1 };
+  int maxIndex = data.length();
+
+  for (int i = 0; i <= maxIndex && found <= index; i++) {
+    if (data.charAt(i) == separator || i == maxIndex) {
+      found++;
+      strIndex[0] = strIndex[1] + 1;
+      strIndex[1] = (i == maxIndex) ? i + 1 : i;
+    }
+  }
+  return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
 void resetData()
@@ -281,6 +268,4 @@ void resetData()
     data.button4 = 1;
 }
 
-void setDiplay()
-{
-}
+
